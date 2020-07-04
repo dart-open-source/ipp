@@ -15,7 +15,7 @@ Future<void> main() async {
       if(jobRes.code==IppCodec.successfulOk){
         var jobState=int.parse(jobRes.attr['job-state'].toString());
         print('jobState: $jobState');
-        if(jobState>5) break;
+        if(jobState>IppCodec.JOB_PROCESSING) break;
       }else{
         break;
       }

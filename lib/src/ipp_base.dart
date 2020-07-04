@@ -20,10 +20,10 @@ class IppPack {
   static String ip = '192.168.8.8';
   final String _url = 'http://$ip:631/ipp/print';
 
-  final Map _headerUtf8 = {'tag': 71, 'key': 'attributes-charset', 'val': 'utf-8'};
-  final Map _headerLang = {'tag': 72, 'key': 'attributes-natural-language', 'val': 'en-us'};
-  final Map _headerContentType = {'tag': 73, 'key': 'document-format', 'val': 'application/octet-stream'};
-  final Map _headerUrl = {'tag': 69, 'key': 'printer-uri', 'val': 'ipp://$ip:631/ipp/print'};
+  static Map headerUtf8 = {'tag': 71, 'key': 'attributes-charset', 'val': 'utf-8'};
+  static Map headerLang = {'tag': 72, 'key': 'attributes-natural-language', 'val': 'en-us'};
+  static Map headerContentType = {'tag': 73, 'key': 'document-format', 'val': 'application/octet-stream'};
+  static Map headerUrl = {'tag': 69, 'key': 'printer-uri', 'val': 'ipp://$ip:631/ipp/print'};
 
   int version = 0x200;
   int code = IppCodec.DEFAULT_CODE;
@@ -61,21 +61,21 @@ class IppPack {
       switch (this.code) {
         case IppCodec.OPERATION_GET_PRINTER_ATTRIBUTES:
           attrs = {
-            1: [_headerUtf8, _headerLang, _headerUrl]
+            1: [headerUtf8, headerLang, headerUrl]
           };
           break;
         case IppCodec.OPERATION_GET_JOB_ATTRIBUTES:
           attrs = {
             1: [
-              _headerUtf8,
-              _headerLang,
+              headerUtf8,
+              headerLang,
               {'tag': 69, 'key': 'job-uri', 'val': jobUrl}
             ]
           };
           break;
         case IppCodec.OPERATION_PRINT_JOB:
           attrs = {
-            1: [_headerUtf8, _headerLang, _headerContentType, _headerUrl]
+            1: [headerUtf8, headerLang, headerContentType, headerUrl]
           };
           break;
       }
