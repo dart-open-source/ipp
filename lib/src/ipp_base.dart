@@ -54,12 +54,15 @@ class IppPack {
       } else if (sendFile != null) {
         this.code = IppCodec.OPERATION_PRINT_JOB;
         _body = sendFile.readAsBytesSync();
-      } else if (code != null) {
+      }
+
+      if (code != null) {
         this.code = code;
       }
 
       switch (this.code) {
         case IppCodec.OPERATION_GET_PRINTER_ATTRIBUTES:
+        case IppCodec.OPERATION_GET_JOBS:
           attrs = {
             1: [headerUtf8, headerLang, headerUrl]
           };
@@ -73,9 +76,18 @@ class IppPack {
             ]
           };
           break;
+          case IppCodec.OPERATION_CANCEL_JOB:
+          attrs = {
+            1: [
+              headerUtf8,
+              headerLang,
+              {'tag': 69, 'key': 'job-uri', 'val': jobUrl}
+            ]
+          };
+          break;
         case IppCodec.OPERATION_PRINT_JOB:
           attrs = {
-            1: [headerUtf8, headerLang, headerContentType, headerUrl]
+            1: [headerUtf8, headerLang, headerUrl,headerContentType]
           };
           break;
       }
