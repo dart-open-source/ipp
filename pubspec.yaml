@@ -1,7 +1,8 @@
 name: ipp
 description: A starting point for Dart libraries or applications.
-version: 1.0.2
+version: 1.0.3
 homepage: https://github.com/almpazel/ipp
+## pub publish --server=https://pub.dartlang.org
 
 environment:
   sdk: '>=2.8.1 <3.0.0'

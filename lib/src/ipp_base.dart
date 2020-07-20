@@ -18,7 +18,7 @@ class IppPack {
   String _hex;
 
   static String ip = '192.168.8.8';
-  final String _url = 'http://$ip:631/ipp/print';
+  static String url = 'http://$ip:631/ipp/print';
 
   static Map headerUtf8 = {'tag': 71, 'key': 'attributes-charset', 'val': 'utf-8'};
   static Map headerLang = {'tag': 72, 'key': 'attributes-natural-language', 'val': 'en-us'};
@@ -245,8 +245,13 @@ class IppPack {
 
   static var ioClient = IOClient(HttpClient()..idleTimeout = Duration(milliseconds: 600));
 
-  Future<IppPack> request() async {
-    final response = await ioClient.post(_url, body: build(), headers: {'Content-type': 'application/ipp'});
+  Future<IppPack> request({Map<String, String> headers}) async {
+    var headersMap=headers??{};
+    headersMap['Content-type']='application/ipp';
+    headersMap['connection']='keep-alive';
+    headersMap['transfer-encoding']='chunked';
+
+    final response = await ioClient.post(url, body: build(), headers: headersMap);
     if (response.statusCode == 200) {
       return IppPack(decode: hex.encode(response.bodyBytes));
     } else {
