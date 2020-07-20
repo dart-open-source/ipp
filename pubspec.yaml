@@ -1,6 +1,6 @@
 name: ipp
-description: A starting point for Dart libraries or applications.
-version: 1.0.3
+description: A starting point for Dart IPP package, for Using internet to Easyly print files, PDF, or other documents, See more information, IPP protocal.
+version: 1.0.4
 homepage: https://github.com/almpazel/ipp
 ## pub publish --server=https://pub.dartlang.org
 

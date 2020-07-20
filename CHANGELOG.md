@@ -1,8 +1,13 @@
+## 1.0.4
+
+- open to public _body Byte Arrays, can directly set;
+
 ## 1.0.3
 
 - open to public some private variables for more accessibility,
   HP printer request need add header connection and transform-encoding chunk type,
   Epson and Canon can directly detected this type 
+  
 
 ## 1.0.2
 

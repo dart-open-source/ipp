@@ -42,7 +42,7 @@ class IppPack {
   int currentTag = 0;
   String currentKey;
 
-  Uint8List _body;
+  Uint8List body;
 
   IppPack({String decode, String jobUrl, File sendFile, int code}) {
     if (decode != null) {
@@ -53,7 +53,7 @@ class IppPack {
         this.code = IppCodec.OPERATION_GET_JOB_ATTRIBUTES;
       } else if (sendFile != null) {
         this.code = IppCodec.OPERATION_PRINT_JOB;
-        _body = sendFile.readAsBytesSync();
+        body = sendFile.readAsBytesSync();
       }
 
       if (code != null) {
@@ -239,7 +239,7 @@ class IppPack {
 
   Uint8List build() {
     var byteList = hex.decode(buildHex());
-    if (_body != null) byteList = byteList + _body.toList();
+    if (body != null) byteList = byteList + body.toList();
     return Uint8List.fromList(byteList);
   }
 
