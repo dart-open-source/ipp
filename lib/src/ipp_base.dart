@@ -4,15 +4,17 @@ import 'dart:typed_data';
 import 'package:http/io_client.dart';
 import 'package:convert/convert.dart';
 
-/// Author AlmPazel
+///
+/// About:->
 /// Copyright 2020 Alm.Pazel
 /// License-Identifier: MIT
+///
+///
+/// Refrences:->
 /// https://www.iana.org/assignments/ipp-registrations/ipp-registrations.xml, updated on 2020-02-20
-/// used References:
-/// ipp.codec
-/// ipp.pwg
 /// https://github.com/HPInc/jipp
 /// https://en.wikipedia.org/wiki/Internet_Printing_Protocol
+///
 
 class IppPack {
   String _hex;
@@ -20,10 +22,17 @@ class IppPack {
   static String ip = '192.168.8.8';
   static String url = 'http://$ip:631/ipp/print';
 
+  ///
+  /// Example attributes
+  ///It need same tag at IPP protocol document, each tag code and name has different values
+  ///
   static Map headerUtf8 = {'tag': 71, 'key': 'attributes-charset', 'val': 'utf-8'};
   static Map headerLang = {'tag': 72, 'key': 'attributes-natural-language', 'val': 'en-us'};
   static Map headerContentType = {'tag': 73, 'key': 'document-format', 'val': 'application/octet-stream'};
   static Map headerUrl = {'tag': 69, 'key': 'printer-uri', 'val': 'ipp://$ip:631/ipp/print'};
+  static Map headerReqUser = {'tag': 66, 'key': 'requesting-user-name', 'val': 'almpazel@gmail.com'};
+
+  static List hexTags = [51];
 
   int version = 0x200;
   int code = IppCodec.DEFAULT_CODE;
@@ -48,54 +57,36 @@ class IppPack {
     if (decode != null) {
       _decode(decode);
     } else {
-
       if (jobUrl != null) {
         this.code = IppCodec.OPERATION_GET_JOB_ATTRIBUTES;
       } else if (sendFile != null) {
         this.code = IppCodec.OPERATION_PRINT_JOB;
         body = sendFile.readAsBytesSync();
       }
-
-      if (code != null) {
-        this.code = code;
-      }
+      if (code != null) this.code = code;
 
       switch (this.code) {
         case IppCodec.OPERATION_GET_PRINTER_ATTRIBUTES:
         case IppCodec.OPERATION_GET_JOBS:
-          attrs = {
-            1: [headerUtf8, headerLang, headerUrl]
-          };
+          putOperationAttributes(headerUtf8);
+          putOperationAttributes(headerLang);
+          putOperationAttributes(headerUrl);
           break;
         case IppCodec.OPERATION_GET_JOB_ATTRIBUTES:
-          attrs = {
-            1: [
-              headerUtf8,
-              headerLang,
-              {'tag': 69, 'key': 'job-uri', 'val': jobUrl}
-            ]
-          };
-          break;
-          case IppCodec.OPERATION_CANCEL_JOB:
-          attrs = {
-            1: [
-              headerUtf8,
-              headerLang,
-              {'tag': 69, 'key': 'job-uri', 'val': jobUrl}
-            ]
-          };
+        case IppCodec.OPERATION_CANCEL_JOB:
+          putOperationAttributes(headerUtf8);
+          putOperationAttributes(headerLang);
+          putOperationAttributes({'tag': 69, 'key': 'job-uri', 'val': jobUrl});
           break;
         case IppCodec.OPERATION_PRINT_JOB:
-          attrs = {
-            1: [headerUtf8, headerLang, headerUrl,headerContentType]
-          };
+          putOperationAttributes(headerUtf8);
+          putOperationAttributes(headerLang);
+          putOperationAttributes(headerUrl);
+          putOperationAttributes(headerContentType);
           break;
       }
     }
   }
-
-
-
 
   void _decode(String d) {
     _hex = d;
@@ -107,9 +98,7 @@ class IppPack {
     while (_hex.isNotEmpty) {
       var res = readAttributes();
       if (res is int) {
-        if (res == 0x03) {
-          break;
-        }
+        if (res == 0x03) break;
         currentTag = res;
       }
       if (res is Map) {
@@ -212,12 +201,17 @@ class IppPack {
     _hex += code.toRadixString(16).padLeft(4, '0');
     _hex += requestId.toRadixString(16).padLeft(8, '0');
 
+    if (operationAttributes.isNotEmpty) attrs[1] = operationAttributes;
+    if (jobAttributes.isNotEmpty) attrs[2] = jobAttributes;
+
     attrs.forEach((key, value) {
       _hex += key.toRadixString(16).padLeft(2, '0');
       if (value is List<Map>) {
         value.forEach((element) {
+          var tagCode = 0;
           element.forEach((key, value) {
             if (key == 'tag') {
+              tagCode = value;
               _hex += value.toRadixString(16).padLeft(2, '0');
             }
             if (key == 'key') {
@@ -226,9 +220,14 @@ class IppPack {
               _hex += hex.encode(ub);
             }
             if (key == 'val') {
-              var ub = value.toString().codeUnits;
-              _hex += (ub.length).round().toRadixString(16).padLeft(4, '0');
-              _hex += hex.encode(ub);
+              if (hexTags.contains(tagCode)) {
+                _hex += (value.length / 2).round().toRadixString(10).padLeft(4, '0');
+                _hex += value;
+              } else {
+                var ub = value.toString().codeUnits;
+                _hex += (ub.length).round().toRadixString(16).padLeft(4, '0');
+                _hex += hex.encode(ub);
+              }
             }
           });
         });
@@ -246,17 +245,33 @@ class IppPack {
   static var ioClient = IOClient(HttpClient()..idleTimeout = Duration(milliseconds: 600));
 
   Future<IppPack> request({Map<String, String> headers}) async {
-    var headersMap=headers??{};
-    headersMap['Content-type']='application/ipp';
-    headersMap['connection']='keep-alive';
-    headersMap['transfer-encoding']='chunked';
-
+    var headersMap = headers ?? {};
+    headersMap['Content-type'] = 'application/ipp';
+    headersMap['connection'] = 'keep-alive';
+    headersMap['transfer-encoding'] = 'chunked';
     final response = await ioClient.post(url, body: build(), headers: headersMap);
     if (response.statusCode == 200) {
       return IppPack(decode: hex.encode(response.bodyBytes));
     } else {
       return IppPack(code: IppCodec.clientErrorBadRequest);
     }
+  }
+
+  List<Map> operationAttributes = [];
+  List<Map> jobAttributes = [];
+
+  ///** Get the [Tag.operationAttributes] group and add or replace [attributes] in it.
+  ///It need same tag at IPP protocol document, each tag code and name has different values
+  IppPack putOperationAttributes(Map value) {
+    operationAttributes.add(value);
+    return this;
+  }
+
+  ///** Get or create the [Tag.jobAttributes] group and add or replace [attributes] in it.
+  ///It need same tag at IPP protocol document, each tag code and name has different values
+  IppPack putJobAttributes(Map value) {
+    jobAttributes.add(value);
+    return this;
   }
 }
 
@@ -272,6 +287,15 @@ class IppCodec {
   static const int successfulOkIgnoredSubscriptions = 0x0003;
   static const int successfulOkTooManyEvents = 0x0005;
   static const int successfulOkEventsComplete = 0x0007;
+
+  static bool reqSuccessful(int code) => [
+        successfulOk,
+        successfulOkIgnoredOrSubstitutedAttributes,
+        successfulOkConflictingAttributes,
+        successfulOkIgnoredSubscriptions,
+        successfulOkTooManyEvents,
+        successfulOkEventsComplete,
+      ].contains(code);
 
   static const int clientErrorBadRequest = 0x0400;
   static const int clientErrorForbidden = 0x0401;
@@ -386,7 +410,6 @@ class IppCodec {
   static const int OPERATION_HOLD_JOB = 0x000C;
   static const int OPERATION_DECODE = 0xFFFF;
 
-
   /// "job-state" enum as defined in:
   /// [RFC8011](http://www.iana.org/go/rfc8011).
 
@@ -397,5 +420,4 @@ class IppCodec {
   static const int JOB_CANCELED = 7;
   static const int JOB_ABORTED = 8;
   static const int JOB_COMPLETED = 9;
-
 }

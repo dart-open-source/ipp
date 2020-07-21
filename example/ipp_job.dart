@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:ipp/ipp.dart';
 
 Future<void> main() async {
-  IppPack.ip='192.168.199.226';
+  IppPack.ip='192.168.199.124';
 //  Print file and Get Job Status
 
   //get jobs
