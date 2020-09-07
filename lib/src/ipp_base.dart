@@ -50,10 +50,12 @@ class IppPack {
 
   int currentTag = 0;
   String currentKey;
+  String msg='';
 
   Uint8List body;
 
-  IppPack({String decode, String jobUrl, File sendFile, int code}) {
+  IppPack({String decode, String jobUrl, File sendFile, int code, String msg=''}) {
+    this.msg=msg;
     if (decode != null) {
       _decode(decode);
     } else {
@@ -242,19 +244,31 @@ class IppPack {
     return Uint8List.fromList(byteList);
   }
 
-  static var ioClient = IOClient(HttpClient()..idleTimeout = Duration(milliseconds: 600));
+  static IOClient get ioClient => IOClient(HttpClient()..idleTimeout = Duration(milliseconds: 600));
 
-  Future<IppPack> request({Map<String, String> headers}) async {
-    var headersMap = headers ?? {};
-    headersMap['Content-type'] = 'application/ipp';
-    headersMap['connection'] = 'keep-alive';
-    headersMap['transfer-encoding'] = 'chunked';
-    final response = await ioClient.post(url, body: build(), headers: headersMap);
-    if (response.statusCode == 200) {
-      return IppPack(decode: hex.encode(response.bodyBytes));
-    } else {
-      return IppPack(code: IppCodec.clientErrorBadRequest);
+  Future<IppPack> request({Map<String, String> headers, Duration timeout}) async {
+    var error='';
+    try{
+      var headersMap = headers ?? {};
+      headersMap['Content-type'] = 'application/ipp';
+      headersMap['connection'] = 'keep-alive';
+      headersMap['transfer-encoding'] = 'chunked';
+
+      var timeOuted = false;
+      final response = await ioClient.post(url, body: build(), headers: headersMap).timeout(timeout??Duration(seconds: 60), onTimeout: () {
+        timeOuted = true;
+        return null;
+      });
+      if (response == null) {
+        return IppPack(code: timeOuted ? IppCodec.clientErrorTimeout : IppCodec.clientErrorBadRequest);
+      }
+      if (response.statusCode == 200) {
+        return IppPack(decode: hex.encode(response.bodyBytes));
+      }
+    }catch(e){
+      error=e.toString();
     }
+    return IppPack(code: IppCodec.clientErrorBadRequest,msg:error);
   }
 
   List<Map> operationAttributes = [];
