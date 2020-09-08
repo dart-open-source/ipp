@@ -255,7 +255,7 @@ class IppPack {
       headersMap['transfer-encoding'] = 'chunked';
 
       var timeOuted = false;
-      final response = await ioClient.post(url, body: build(), headers: headersMap).timeout(timeout??Duration(seconds: 60), onTimeout: () {
+      final response = await ioClient.post(url, body: build(), headers: headersMap).timeout(timeout??Duration(seconds: 6), onTimeout: () {
         timeOuted = true;
         return null;
       });
