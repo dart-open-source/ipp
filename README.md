@@ -1,7 +1,7 @@
 A library for Dart developers.
 
 Created from templates made available by Stagehand under a BSD-style
-[license](https://github.com/almpazel/ipp/blob/master/LICENSE).
+[license](https://gitee.com/darto/ipp/blob/master/LICENSE).
 
 ## Usage
 

@@ -1,7 +1,7 @@
 name: ipp
 description: A starting point for Dart IPP package, for Using IPP(internet printer protocol) to Easyly print files, PDF, or other documents, See more information, see demo or examples.
-version: 1.0.6
-homepage: https://gitee.com/almpazel/dart-ipp
+version: 1.0.7
+homepage: https://gitee.com/darto/ipp
 
 ## pub publish --server=https://pub.dartlang.org
 
@@ -11,6 +11,7 @@ environment:
 dependencies:
   http: ^0.12.1
   convert: ^2.1.1
+  alm: ^0.0.2
 
 dev_dependencies:
   pedantic: ^1.9.0

@@ -1,3 +1,7 @@
+## 1.0.7
+- add net-printer status include only canon epson hp printers;
+- epson printer can auto open [IPP NON SECURE ALLOW] 
+
 ## 1.0.6
 - add Future<IppPack> request.timeout param. return never null !!;
 

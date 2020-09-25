@@ -4,4 +4,6 @@
 library ipp;
 
 export 'src/ipp_base.dart';
+export 'src/codec.dart';
+export 'src/net_printer.dart';
 
