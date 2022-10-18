@@ -1,6 +1,7 @@
+import 'dart:io';
+
 import 'package:alm/alm.dart';
 import 'package:html/parser.dart';
-import 'dart:io';
 import 'package:http/http.dart';
 import 'package:http/io_client.dart';
 
@@ -10,10 +11,9 @@ import 'codec.dart';
 final NetPrinter = _NetPrinter();
 
 class _NetPrinter {
-
   bool debug = false;
 
-  Duration timeout=Duration(seconds: 5);
+  Duration timeout = Duration(seconds: 5);
 
   String listName = 'EPSON:CANON:HP:ERROR';
 
@@ -71,30 +71,41 @@ class _NetPrinter {
     'Accept': '*/*',
     'Connection': 'keep-alive',
     'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36 Alm/1.0 (AlmPazel@Gmail)',
+    'User-Agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36 Alm/1.0 (AlmPazel@Gmail)',
     'Content-Type': 'application/x-www-form-urlencoded',
   };
 
   String get basicUrl => 'https://$ip';
 
-  HttpClient httpClient = HttpClient()..badCertificateCallback = ((X509Certificate cert, String host, int port) => true);
+  HttpClient httpClient = HttpClient()
+    ..badCertificateCallback =
+        ((X509Certificate cert, String host, int port) => true);
 
-  IOClient get ioClient => IOClient(httpClient..idleTimeout = Duration(seconds: 1));
+  IOClient get ioClient =>
+      IOClient(httpClient..idleTimeout = Duration(seconds: 1));
 
   Future<Response> request(url, {dynamic body}) async {
     headers['Client-Time'] = DateTime.now().toString();
     if (isEpson) headers['Cookie'] = 'EPSON_COOKIE_LANG=lang_b&1/lang_a&1';
     Response response;
     if (body != null) {
-      response = await ioClient.post('$basicUrl/$url', body: body, headers: headers).timeout(timeout, onTimeout: () => null);
+      response = await ioClient
+          .post(Uri.parse('$basicUrl/$url'), body: body, headers: headers)
+          .timeout(timeout, onTimeout: () => Response('', 404));
     } else {
-      response = await ioClient.get('$basicUrl/$url', headers: headers).timeout(timeout, onTimeout: () => null);
+      response = await ioClient
+          .get(Uri.parse('$basicUrl/$url'), headers: headers)
+          .timeout(timeout, onTimeout: () => Response('', 404));
     }
     try {
-      if (debug) print('${url}->response.statusCode:${response.statusCode} $status');
+      if (debug) {
+        print('$url->response.statusCode:${response.statusCode} $status');
+      }
       response.headers.forEach((key, value) {
         if (key.toUpperCase() == 'SERVER') {
-          var serverName = value.toUpperCase().replaceAll('KS_HTTP', 'KS_HTTP CANON ');
+          var serverName =
+              value.toUpperCase().replaceAll('KS_HTTP', 'KS_HTTP CANON ');
           for (var b in brandList) {
             if (serverName.split(' ').contains(b)) {
               brand = b;
@@ -114,7 +125,8 @@ class _NetPrinter {
 
       if (!hasPrinter) throw Exception();
 
-      var response = (await request(requestStatusMap[brand])) ?? (await request(requestStatusMap[brand]));
+      Response? response = (await request(requestStatusMap[brand]));
+
       if (response == null) throw Exception();
 
       if (isCanon) {
@@ -137,31 +149,40 @@ class _NetPrinter {
       if (isEpson) {
         var document = parse(response.body);
         var sd = document.getElementsByTagName('fieldset');
-        var element = sd[2].nodes[1].text.replaceAll(' ', '').replaceAll('.', '').trim();
+        var element =
+            sd[2].nodes[1].text!.replaceAll(' ', '').replaceAll('.', '').trim();
         //use simpler both hp and epson printers
-        element = element.replaceAll('Thepapercassetteisnotsetcorrectly', 'Papercase');
+        element = element.replaceAll(
+            'Thepapercassetteisnotsetcorrectly', 'Papercase');
         element = element.replaceAll('Papercase', 'insertOrCloseTray');
-        element = element.replaceAll('AnerrorhasoccurredPleaseconfirmtheindicatorormessageontheproduct', 'closeDoorOrCover');
+        element = element.replaceAll(
+            'AnerrorhasoccurredPleaseconfirmtheindicatorormessageontheproduct',
+            'closeDoorOrCover');
         reason = element.replaceAll('Paperjam', 'jamInPrinter');
       }
       if (isHp) {
-        final alphanumeric = RegExp(r'<(\w+:\w+)>(.*)</\1>', multiLine: true, caseSensitive: true).allMatches(response.body);
+        final alphanumeric = RegExp(r'<(\w+:\w+)>(.*)</\1>',
+                multiLine: true, caseSensitive: true)
+            .allMatches(response.body);
         var info = <String, String>{};
         alphanumeric.forEach((element) {
-          info[element.group(1)] = element.group(2);
+          if (element.group(1) != null && element.group(2) != null) {
+            info[element.group(1)!] = element.group(2)!;
+          }
         });
-        reason = info['pscat:StatusCategory'];
+        reason = info['pscat:StatusCategory']!;
       }
     } catch (e) {
       reason = 'UnAvailable';
     }
-    code = pairCodes[reason];
+    code = pairCodes[reason]!;
     return reason;
   }
 
   ///============================== Epson ==============================
 
-  Future<dynamic> config({bool isDuplex = false, bool isGray = false, int copies = 1}) async {
+  Future<dynamic> config(
+      {bool isDuplex = false, bool isGray = false, int copies = 1}) async {
     var body = {
       'INPUTT_TOPOFFSET': '0.0',
       'INPUTT_LEFTOFFSET': '0.0',
@@ -198,13 +219,17 @@ class _NetPrinter {
 
     Future<dynamic> responseCall() async {
       var list = [];
-      final response = await request('PRESENTATION/ADVANCED/PRINTER_UNIVERSAL/POLL', body: body);
+      final response = await request(
+          'PRESENTATION/ADVANCED/PRINTER_UNIVERSAL/POLL',
+          body: body);
       var document = parse(response.body);
       var lists = document.getElementsByTagName('input');
       lists.forEach((element) {
         var map = Map.from(element.attributes);
         var elementBody = map.toString();
-        if (elementBody.contains('INPUTT_NUMOFCOPY') || elementBody.contains('INPUTR_TWOSIDEPRINT') || elementBody.contains('INPUTD_COLORATION')) {
+        if (elementBody.contains('INPUTT_NUMOFCOPY') ||
+            elementBody.contains('INPUTR_TWOSIDEPRINT') ||
+            elementBody.contains('INPUTD_COLORATION')) {
           list.add(map);
         }
       });
@@ -217,11 +242,13 @@ class _NetPrinter {
   }
 
   Future<String> snapshot([String path = '/sdcard/panel_snapshot.jpg']) async {
-    final response = await request('PRESENTATION/ADVANCED/INFO_PANELSNAPSHOT/TOP', body: {});
+    final response =
+        await request('PRESENTATION/ADVANCED/INFO_PANELSNAPSHOT/TOP', body: {});
     var document = parse(response.body);
     if (debug) print('document:$document');
     await Alm.delaySecond(3);
-    final res = await request('PRESENTATION/ADVANCED/INFO_PANELSNAPSHOT/PANELIMAGE.JPG');
+    final res = await request(
+        'PRESENTATION/ADVANCED/INFO_PANELSNAPSHOT/PANELIMAGE.JPG');
     var file = File(path);
     file.writeAsBytesSync(res.bodyBytes);
     if (debug) print('INFO_PANELSNAPSHOT ${file.path}');
@@ -230,7 +257,8 @@ class _NetPrinter {
 
   Future<bool> _ippProtocolAllow() async {
     try {
-      final response = await request('PRESENTATION/ADVANCED/NW_SERVICE_PRTCL/TOP');
+      final response =
+          await request('PRESENTATION/ADVANCED/NW_SERVICE_PRTCL/TOP');
       if (response == null) throw Exception();
       var document = parse(response.body);
       var inputs = document.getElementById('INPUTR_IPPNONSECUREALLOW-ALLOWED');
@@ -244,7 +272,8 @@ class _NetPrinter {
     try {
       var isOpen = await _ippProtocolAllow();
       if (isOpen) return true;
-      await request('PRESENTATION/ADVANCED/NW_SERVICE_PRTCL/SET', body: {'INPUTR_IPPNONSECUREALLOW': 'ALLOWED'});
+      await request('PRESENTATION/ADVANCED/NW_SERVICE_PRTCL/SET',
+          body: {'INPUTR_IPPNONSECUREALLOW': 'ALLOWED'});
       var timerCounter = 0;
       while (true) {
         timerCounter++;
