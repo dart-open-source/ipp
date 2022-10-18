@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:http/io_client.dart';
+
 import 'package:convert/convert.dart';
+import 'package:http/io_client.dart';
+import 'package:http/src/response.dart';
 
 import 'codec.dart';
 
@@ -19,7 +21,7 @@ import 'codec.dart';
 ///
 
 class IppPack {
-  String _hex;
+  late String _hex;
 
   static String ip = '192.168.8.8';
   static String url = 'http://$ip:631/ipp/print';
@@ -28,11 +30,31 @@ class IppPack {
   /// Example attributes
   ///It need same tag at IPP protocol document, each tag code and name has different values
   ///
-  static Map headerUtf8 = {'tag': 71, 'key': 'attributes-charset', 'val': 'utf-8'};
-  static Map headerLang = {'tag': 72, 'key': 'attributes-natural-language', 'val': 'en-us'};
-  static Map headerContentType = {'tag': 73, 'key': 'document-format', 'val': 'application/octet-stream'};
-  static Map headerUrl = {'tag': 69, 'key': 'printer-uri', 'val': 'ipp://$ip:631/ipp/print'};
-  static Map headerReqUser = {'tag': 66, 'key': 'requesting-user-name', 'val': 'almpazel@gmail.com'};
+  static Map headerUtf8 = {
+    'tag': 71,
+    'key': 'attributes-charset',
+    'val': 'utf-8'
+  };
+  static Map headerLang = {
+    'tag': 72,
+    'key': 'attributes-natural-language',
+    'val': 'en-us'
+  };
+  static Map headerContentType = {
+    'tag': 73,
+    'key': 'document-format',
+    'val': 'application/octet-stream'
+  };
+  static Map headerUrl = {
+    'tag': 69,
+    'key': 'printer-uri',
+    'val': 'ipp://$ip:631/ipp/print'
+  };
+  static Map headerReqUser = {
+    'tag': 66,
+    'key': 'requesting-user-name',
+    'val': 'almpazel@gmail.com'
+  };
 
   static List hexTags = [51];
 
@@ -51,13 +73,19 @@ class IppPack {
   Map<String, dynamic> attr = {};
 
   int currentTag = 0;
-  String currentKey;
-  String msg='';
+  late String currentKey;
+  String msg = '';
 
-  Uint8List body;
+  late Uint8List body;
 
-  IppPack({String decode, String jobUrl, File sendFile, int code, String msg=''}) {
-    this.msg=msg;
+  IppPack({
+    String? decode,
+    String? jobUrl,
+    File? sendFile,
+    int? code,
+    String msg = '',
+  }) {
+    this.msg = msg;
     if (decode != null) {
       _decode(decode);
     } else {
@@ -107,7 +135,7 @@ class IppPack {
       }
       if (res is Map) {
         if (attrs[currentTag] == null) attrs[currentTag] = [];
-        attrs[currentTag].add(res);
+        attrs[currentTag]!.add(res);
       }
     }
   }
@@ -225,7 +253,10 @@ class IppPack {
             }
             if (key == 'val') {
               if (hexTags.contains(tagCode)) {
-                _hex += (value.length / 2).round().toRadixString(10).padLeft(4, '0');
+                _hex += (value.length / 2)
+                    .round()
+                    .toRadixString(10)
+                    .padLeft(4, '0');
                 _hex += value;
               } else {
                 var ub = value.toString().codeUnits;
@@ -246,31 +277,38 @@ class IppPack {
     return Uint8List.fromList(byteList);
   }
 
-  static IOClient get ioClient => IOClient(HttpClient()..idleTimeout = Duration(milliseconds: 600));
+  static IOClient get ioClient =>
+      IOClient(HttpClient()..idleTimeout = Duration(milliseconds: 600));
 
-  Future<IppPack> request({Map<String, String> headers, Duration timeout}) async {
-    var error='';
-    try{
+  Future<IppPack> request(
+      {Map<String, String>? headers, Duration? timeout}) async {
+    var error = '';
+    try {
       var headersMap = headers ?? {};
       headersMap['Content-type'] = 'application/ipp';
       headersMap['connection'] = 'keep-alive';
       headersMap['transfer-encoding'] = 'chunked';
 
       var timeOuted = false;
-      final response = await ioClient.post(url, body: build(), headers: headersMap).timeout(timeout??Duration(seconds: 6), onTimeout: () {
+      Response response = await ioClient
+          .post(Uri.parse(url), body: build(), headers: headersMap)
+          .timeout(timeout ?? Duration(seconds: 6), onTimeout: () {
         timeOuted = true;
-        return null;
+        return Response('', 404);
       });
       if (response == null) {
-        return IppPack(code: timeOuted ? IppCodec.clientErrorTimeout : IppCodec.clientErrorBadRequest);
+        return IppPack(
+            code: timeOuted
+                ? IppCodec.clientErrorTimeout
+                : IppCodec.clientErrorBadRequest);
       }
       if (response.statusCode == 200) {
         return IppPack(decode: hex.encode(response.bodyBytes));
       }
-    }catch(e){
-      error=e.toString();
+    } catch (e) {
+      error = e.toString();
     }
-    return IppPack(code: IppCodec.clientErrorBadRequest,msg:error);
+    return IppPack(code: IppCodec.clientErrorBadRequest, msg: error);
   }
 
   List<Map> operationAttributes = [];
@@ -290,4 +328,3 @@ class IppPack {
     return this;
   }
 }
-
